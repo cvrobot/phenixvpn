@@ -137,17 +137,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
       errf("concurrency should <= 100");
       return -1;
     }
-  }/* else if (strcmp("clients", key) == 0){
-		args->clients = atol(value);
-		if (args->clients == 0) {
-      errf("clients should >= 1");
-      return -1;
-    }
-    if (args->clients > 100) {
-      errf("clients should <= 100");
-      return -1;
-    }
-  }*/else if (strcmp("password", key) == 0) {
+  } else if (strcmp("password", key) == 0) {
     args->password = strdup(value);
 	}
 #ifndef TARGET_WIN32
@@ -155,8 +145,8 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     char *p = strchr(value, '/');
     if (p) *p = 0;
 		int mask = atoi(++p);
-		if(mask > 30 || mask < 1){
-      errf("net mask should >= 1 && <= 30");
+		if(mask > 31 || mask < 1){
+      errf("net mask should >= 1 && <= 31");
 			return -1;
 		}
     in_addr_t addr = inet_addr(value);
