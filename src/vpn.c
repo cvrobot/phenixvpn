@@ -490,7 +490,7 @@ int vpn_run(vpn_ctx_t *ctx) {
 
 			// choose remote address for server
 			if (ctx->args->mode == SHADOWVPN_MODE_SERVER) {
-				get_client_by_daddr(cli_ctx, ctx->tun_buf, r);
+				get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
 
 				if(cli_ctx->cli != NULL)
 					strategy_choose_remote_addr(cli_ctx->cli,ctx->remote_addrp, &ctx->remote_addrlen);
@@ -558,7 +558,7 @@ int vpn_run(vpn_ctx_t *ctx) {
             // recv_from
             memcpy(ctx->remote_addrp, &temp_remote_addr, temp_remote_addrlen);
             ctx->remote_addrlen = temp_remote_addrlen;
-						get_client_by_saddr(cli_ctx, ctx->tun_buf, r - SHADOWVPN_OVERHEAD_LEN);
+						get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r - SHADOWVPN_OVERHEAD_LEN);
             // now we got one client address, update the address list
             if(cli_ctx->cli != NULL)
 							strategy_update_remote_addr_list(cli_ctx->cli, ctx->remote_addrp, ctx->remote_addrlen);

@@ -58,7 +58,7 @@ int client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
 cli_info_t *client_check_ip(cli_ctx_t *ctx, uint32_t netip)
 {
 	cli_info_t *cli = NULL;
-	
+
 	unsigned char ip[5] = {0};
 	struct in_addr in;
 	in.s_addr = netip;
@@ -104,9 +104,10 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 	uint8_t iphdr_len;
 
 	ctx->cli = NULL;
-	if ((iphdr->version & 0xf0) != 0x40) {
+	if ((iphdr->version & 0xf) != 0x4) {
 		// check header, currently IPv4 only
 		// bypass IPv6
+		logf("%s ipv6 not support version:0x%x", __func__, iphdr->version);
 		return 0;
 	}
 	iphdr_len = (iphdr->version & 0x0f) * 4;
@@ -115,13 +116,15 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 		HASH_FIND(hh, ctx->ip_to_clients, &iphdr->saddr, 4, ctx->cli);
 	else
 		HASH_FIND(hh, ctx->ip_to_clients, &iphdr->daddr, 4, ctx->cli);
+
+	struct in_addr da,sa;
+	da.s_addr = iphdr->daddr;
+	sa.s_addr = iphdr->saddr;
 	if (ctx->cli == NULL) {
-		struct in_addr da,sa;
-		da.s_addr = iphdr->daddr;
-		sa.s_addr = iphdr->saddr;
 		errf("nat: client not found for given addr token is_saddr:%d, saddr:%s,daddr:%s", is_saddr, inet_ntoa(sa),inet_ntoa(da));
 		return -1;
 	}
+	logf("nat: client  found for given addr token is_saddr:%d, saddr:%s,daddr:%s", is_saddr, inet_ntoa(sa),inet_ntoa(da));
 	return 0;
 }
 
