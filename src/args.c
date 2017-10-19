@@ -164,7 +164,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
       errf("warning: invalid net IP in config file: %s", value);
     }
     args->netip = ntohl((uint32_t)addr);
-		args->clients = pow(2, mask) - 2;//*.*.*.0 not used, *.*.*.1 for srv use
+		args->clients = pow(2, 32 - mask) - 2;//*.*.*.0 not used, *.*.*.1 for srv use
 	logf("net mask:%d clients:%d", mask, args->clients);
   }
 #endif
