@@ -153,12 +153,12 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
 #ifndef TARGET_WIN32
   else if (strcmp("net", key) == 0) {
     char *p = strchr(value, '/');
+    if (p) *p = 0;
 		int mask = atoi(++p);
 		if(mask > 30 || mask < 1){
       errf("net mask should >= 1 && <= 30");
 			return -1;
 		}
-    if (p) *p = 0;
     in_addr_t addr = inet_addr(value);
     if (addr == INADDR_NONE) {
       errf("warning: invalid net IP in config file: %s", value);
