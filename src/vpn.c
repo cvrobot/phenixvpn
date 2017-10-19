@@ -407,13 +407,15 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
     }
   }
   if (args->mode == SHADOWVPN_MODE_SERVER) {
-    ctx->known_addrs = calloc(args->concurrency, sizeof(addr_info_t));
+		ctx->cli_ctx = malloc(sizeof(cli_ctx_t));
+		client_init(ctx->cli_ctx, args);
   }
   ctx->args = args;
   return 0;
 }
 
 int vpn_run(vpn_ctx_t *ctx) {
+	cli_ctx_t *cli_ctx = ctx->cli_ctx;
   fd_set readset;
   int max_fd = 0, i;
   ssize_t r;
@@ -461,7 +463,7 @@ int vpn_run(vpn_ctx_t *ctx) {
 #ifndef TARGET_WIN32
     if (FD_ISSET(ctx->control_pipe[0], &readset)) {
       char pipe_buf;
-      (void)read(ctx->control_pipe[0], &pipe_buf, 1);
+      r = read(ctx->control_pipe[0], &pipe_buf, 1);
       break;
     }
 #else
@@ -485,13 +487,20 @@ int vpn_run(vpn_ctx_t *ctx) {
           break;
         }
       }
-      if (ctx->remote_addrlen) {
-        crypto_encrypt(ctx->udp_buf, ctx->tun_buf, r);
 
-        // choose remote address for server
-        if (ctx->args->mode == SHADOWVPN_MODE_SERVER) {
-          strategy_choose_remote_addr(ctx);
-        }
+			// choose remote address for server
+			if (ctx->args->mode == SHADOWVPN_MODE_SERVER) {
+				get_client_by_daddr(cli_ctx, ctx->tun_buf, r);
+
+				if(cli_ctx->cli != NULL)
+					strategy_choose_remote_addr(cli_ctx->cli,ctx->remote_addrp, &ctx->remote_addrlen);
+				else
+					ctx->remote_addrlen = 0;
+			}
+
+      if (ctx->remote_addrlen) {
+
+        crypto_encrypt(ctx->udp_buf, ctx->tun_buf, r);
 
         // choose socket (currently only for client)
         int sock_to_send = strategy_choose_socket(ctx);
@@ -549,22 +558,30 @@ int vpn_run(vpn_ctx_t *ctx) {
             // recv_from
             memcpy(ctx->remote_addrp, &temp_remote_addr, temp_remote_addrlen);
             ctx->remote_addrlen = temp_remote_addrlen;
+						get_client_by_saddr(cli_ctx, ctx->tun_buf, r - SHADOWVPN_OVERHEAD_LEN);
             // now we got one client address, update the address list
-            strategy_update_remote_addr_list(ctx);
+            if(cli_ctx->cli != NULL)
+							strategy_update_remote_addr_list(cli_ctx->cli, ctx->remote_addrp, ctx->remote_addrlen);
+						else{
+							//can't find client, means this address is not added to client, so drop it.
+							ctx->remote_addrlen = 0;
+						}
           }
 
-          if (-1 == tun_write(ctx->tun, ctx->tun_buf + SHADOWVPN_ZERO_BYTES,
-                r - SHADOWVPN_OVERHEAD_LEN)) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-              // do nothing
-            } else if (errno == EPERM || errno == EINTR || errno == EINVAL) {
-              // just log, do nothing
-              err("write to tun");
-            } else {
-              err("write to tun");
-              break;
-            }
-          }
+					if(ctx->remote_addrlen){
+	          if (-1 == tun_write(ctx->tun, ctx->tun_buf + SHADOWVPN_ZERO_BYTES,
+	                r - SHADOWVPN_OVERHEAD_LEN)) {
+	            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+	              // do nothing
+	            } else if (errno == EPERM || errno == EINTR || errno == EINVAL) {
+	              // just log, do nothing
+	              err("write to tun");
+	            } else {
+	              err("write to tun");
+	              break;
+	            }
+	          }
+					}
         }
       }
     }

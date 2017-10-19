@@ -4,7 +4,7 @@ lib_LTLIBRARIES = libshadowvpn.la
 
 SUBDIRS = ../libsodium
 
-AM_CFLAGS = -I$(srcdir)/../libsodium/src/libsodium/include
+AM_CFLAGS = -I$(srcdir)/../libsodium/src/libsodium/include -lm
 
 libshadowvpn_la_SOURCES = log.c \
 	log.h \
@@ -16,13 +16,17 @@ libshadowvpn_la_SOURCES = log.c \
 	shell.c \
 	strategy.h \
 	strategy.c \
+	client.h \
+	client.c \
 	vpn.h \
 	vpn.c \
 	args.h \
 	args.c \
 	daemon.h \
 	daemon.c \
-	shadowvpn.h
+	shadowvpn.h \
+	uthash.h \
+	portable_endian.h
 
 if WIN32
 libshadowvpn_la_SOURCES += win32.c win32.h

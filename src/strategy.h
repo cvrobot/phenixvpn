@@ -30,9 +30,8 @@ int strategy_choose_socket(vpn_ctx_t *ctx);
 // choose a reasonable remote address based on magic
 // update ctx->remote_addr and remote_addrlen
 // return 0 on success
-int strategy_choose_remote_addr(vpn_ctx_t *ctx);
+int strategy_choose_remote_addr(cli_info_t *cli, struct sockaddr *remote_addrp, socklen_t *remote_addrlen);
 
 // update remote address list from remote_addr and remote_addrlen
-void strategy_update_remote_addr_list(vpn_ctx_t *ctx);
-
+void strategy_update_remote_addr_list(cli_info_t *cli, struct sockaddr *remote_addrp, socklen_t remote_addrlen);
 #endif

@@ -32,5 +32,5 @@
 #include "shell.h"
 #include "vpn.h"
 #include "strategy.h"
-
+#include "client.h"
 #endif

@@ -49,6 +49,9 @@ typedef struct {
   uint16_t port;
   uint16_t mtu;
   uint16_t concurrency;
+	uint16_t clients;
+	//in host order, linux srv start addres, and tun ip for client,
+	uint32_t netip;
   const char *up_script;
   const char *down_script;
 #ifdef TARGET_WIN32

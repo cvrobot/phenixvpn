@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <getopt.h>
+#include <math.h>
 #include "shadowvpn.h"
 
 static const char *help_message =
@@ -136,9 +137,37 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
       errf("concurrency should <= 100");
       return -1;
     }
-  } else if (strcmp("password", key) == 0) {
+  }/* else if (strcmp("clients", key) == 0){
+		args->clients = atol(value);
+		if (args->clients == 0) {
+      errf("clients should >= 1");
+      return -1;
+    }
+    if (args->clients > 100) {
+      errf("clients should <= 100");
+      return -1;
+    }
+  }*/else if (strcmp("password", key) == 0) {
     args->password = strdup(value);
-  } else if (strcmp("mode", key) == 0) {
+	}
+#ifndef TARGET_WIN32
+  else if (strcmp("net", key) == 0) {
+    char *p = strchr(value, '/');
+		int mask = atoi(++p);
+		if(mask > 30 || mask < 1){
+      errf("net mask should >= 1 && <= 30");
+			return -1;
+		}
+    if (p) *p = 0;
+    in_addr_t addr = inet_addr(value);
+    if (addr == INADDR_NONE) {
+      errf("warning: invalid net IP in config file: %s", value);
+    }
+    args->netip = ntohl((uint32_t)addr);
+		args->clients = pow(2, mask);
+  }
+#endif
+	else if (strcmp("mode", key) == 0) {
     if (strcmp("server", value) == 0) {
       args->mode = SHADOWVPN_MODE_SERVER;
     } else if (strcmp("client", value) == 0) {

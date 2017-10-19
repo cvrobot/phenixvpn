@@ -32,13 +32,7 @@
 #include <sys/socket.h>
 #endif
 #include "args.h"
-
-/* the structure to store known client addresses for the server */
-typedef struct {
-  struct sockaddr_storage addr;
-  socklen_t addrlen;
-  time_t last_recv_time;
-} addr_info_t;
+#include "client.h"
 
 typedef struct {
   int running;
@@ -57,10 +51,7 @@ typedef struct {
   unsigned char *tun_buf;
   unsigned char *udp_buf;
 
-  /* known client addrs for the server */
-  int nknown_addr;
-  addr_info_t *known_addrs;
-
+	cli_ctx_t *cli_ctx;
   /* the address we currently use */
   struct sockaddr_storage remote_addr;
   struct sockaddr *remote_addrp;
