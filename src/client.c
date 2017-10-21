@@ -75,14 +75,16 @@ cli_info_t *client_check_ip(cli_ctx_t *ctx, uint32_t netip)
 	return cli;
 }
 
-
 int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
 {
 	if(client_check_ip(ctx, netip) == NULL){
 		client_add(ctx, netip, pwd);
 		return 0;
 	}else{
+		struct in_addr in;
+		in.s_addr = netip;
 		//TODO: client already exist.
+		errf("client already exit for specified netip:%s", inet_ntoa(in));
 		return -1;
 	}
 }
@@ -120,7 +122,7 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 
 		inet_ntop(AF_INET6, &ipv6hdr->daddr, da_s, INET6_ADDRSTRLEN);
 		inet_ntop(AF_INET6, &ipv6hdr->saddr, sa_s, INET6_ADDRSTRLEN);
-		errf("%s ipv6 not support version:0x%x,is_saddr:%d, saddr:%s,daddr:%s", __func__, iphdr->version, is_saddr, sa_s, da_s);
+		//errf("%s ipv6 not support version:0x%x,is_saddr:%d, saddr:%s,daddr:%s", __func__, iphdr->version, is_saddr, sa_s, da_s);
 		return 0;
 	}
 
@@ -135,7 +137,6 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 		errf("nat: client not found for given addr is_saddr:%d, saddr:%s,daddr:%s", is_saddr, sa_s, da_s);
 		return -1;
 	}
-	logf("nat: client  found for given addr is_saddr:%d, saddr:%s,daddr:%s", is_saddr, sa_s, da_s);
 	return 0;
 }
 
