@@ -12,12 +12,14 @@
 
 #ifndef TARGET_WIN32
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
 typedef struct iphdr ipv4_hdr_t;
+typedef struct ipv6hdr ipv6_hdr_t;
 
 int client_init(cli_ctx_t *ctx, shadowvpn_args_t *args)
 {
@@ -102,7 +104,7 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 	ipv4_hdr_t *iphdr = (ipv4_hdr_t *)(buf);
 
 	uint8_t iphdr_len;
-	char sa_s[16] ={0},da_s[16] = {0};
+	char sa_s[INET6_ADDRSTRLEN] ={0},da_s[INET6_ADDRSTRLEN] = {0};
 	struct in_addr addr;
 
 	addr.s_addr = iphdr->daddr;
@@ -114,9 +116,14 @@ int get_client_by_ipaddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int 
 	if ((iphdr->version & 0xf) != 0x4) {
 		// check header, currently IPv4 only
 		// bypass IPv6
-		logf("%s ipv6 not support version:0x%x", __func__, iphdr->version);
+		ipv6_hdr_t *ipv6hdr = (ipv6_hdr_t *)(buf);
+
+		inet_ntop(AF_INET6, &ipv6hdr->daddr, da_s, INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &ipv6hdr->saddr, sa_s, INET6_ADDRSTRLEN);
+		errf("%s ipv6 not support version:0x%x,is_saddr:%d, saddr:%s,daddr:%s", __func__, iphdr->version, is_saddr, sa_s, da_s);
 		return 0;
 	}
+
 	iphdr_len = (iphdr->ihl & 0x0f) * 4;
 
 	if(is_saddr)
