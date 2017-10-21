@@ -155,7 +155,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     }
     args->netip = ntohl((uint32_t)addr);
 		args->clients = pow(2, 32 - mask) - 2;//*.*.*.0 not used, *.*.*.1 for srv use
-	logf("net mask:%d clients:%d", mask, args->clients);
+		//logf("net mask:%d clients:%d", mask, args->clients);
   }
 #endif
 	else if (strcmp("mode", key) == 0) {
