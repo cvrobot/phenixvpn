@@ -23,10 +23,6 @@
 
 #include "vpn.h"
 
-// choose a socket by random
-// return chosen socket
-int strategy_choose_socket(vpn_ctx_t *ctx);
-
 // choose a reasonable remote address based on magic
 // update ctx->remote_addr and remote_addrlen
 // return 0 on success

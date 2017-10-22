@@ -23,21 +23,11 @@
 
 #include <time.h>
 
-#ifdef TARGET_WIN32
-#include "win32.h"
-#else
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#endif
 #include "args.h"
 #include "client.h"
 
 typedef struct {
   int running;
-  int nsock;
-  int *socks;
   int tun;
   /* select() in winsock doesn't support file handler */
 #ifndef TARGET_WIN32
@@ -51,6 +41,7 @@ typedef struct {
   unsigned char *tun_buf;
   unsigned char *udp_buf;
 
+	vpn_channel_t *channel;
 	cli_ctx_t *cli_ctx;
   /* the address we currently use */
   struct sockaddr_storage remote_addr;
@@ -72,7 +63,4 @@ int vpn_stop(vpn_ctx_t *ctx);
 #ifndef TARGET_WIN32
 int vpn_tun_alloc(const char *dev);
 #endif
-int vpn_udp_alloc(int if_bind, const char *host, int port,
-                  struct sockaddr *addr, socklen_t* addrlen);
-
 #endif

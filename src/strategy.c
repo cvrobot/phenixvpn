@@ -34,16 +34,6 @@
 
 #define ADDR_TIMEOUT 30
 
-int strategy_choose_socket(vpn_ctx_t *ctx)
-{
-  // rule: just pick a random socket
-  if (ctx->nsock == 1) {
-    return ctx->socks[0];
-  }
-  uint32_t r = randombytes_uniform(ctx->nsock);
-  return ctx->socks[r];
-}
-
 static inline void save_addr(addr_info_t *addr_info, struct sockaddr *addrp,
                              socklen_t addrlen, time_t now) {
   memcpy(&addr_info->addr, addrp, addrlen);

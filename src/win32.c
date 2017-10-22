@@ -255,7 +255,7 @@ DWORD WINAPI tun_reader(LPVOID arg) {
   struct sockaddr addr;
   socklen_t addrlen;
 
-  sock = vpn_udp_alloc(1, TUN_DELEGATE_ADDR, 0, &addr, &addrlen);
+  sock = channel_udp_alloc(1, TUN_DELEGATE_ADDR, 0, &addr, &addrlen);
 
   olpd.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
@@ -311,7 +311,7 @@ int tun_open(const char *tun_device, const char *tun_ip, int tun_mask,
    * A thread does blocking reads on tun device and
    * sends data as udp to this socket */
 
-  tunfd = vpn_udp_alloc(1, TUN_DELEGATE_ADDR, tun_port, &data.addr,
+  tunfd = channel_udp_alloc(1, TUN_DELEGATE_ADDR, tun_port, &data.addr,
                         &data.addrlen);
   if (INVALID_SOCKET == tunfd) {
     errf("can not bind delegate port for tun: %d", tun_port);
