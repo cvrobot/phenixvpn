@@ -48,7 +48,16 @@ static inline void load_addr(addr_info_t *addr_info,
   *addrlen = addr_info->addrlen;
 }
 
-int strategy_choose_remote_addr(cli_info_t *cli, struct sockaddr *remote_addrp, socklen_t *remote_addrlen)
+strategy_ctx_t *strategy_init(uint16_t concurrency)
+{
+	strategy_ctx_t * ctx = malloc(sizeof(strategy_ctx_t));
+	ctx->nknown_addr = 0;
+	ctx->max_addrs = concurrency;
+	ctx->known_addrs = calloc(concurrency, sizeof(addr_info_t));
+	return ctx;
+}
+
+int strategy_choose_remote_addr(strategy_ctx_t *ctx, struct sockaddr *remote_addrp, socklen_t *remote_addrlen)
 {
   // rules:
   // 1. if there isn't any address received from within ADDR_TIMEOUT
@@ -65,14 +74,14 @@ int strategy_choose_remote_addr(cli_info_t *cli, struct sockaddr *remote_addrp, 
   time_t now;
   addr_info_t *latest = NULL, *temp;
 
-  if (cli->nknown_addr == 0) {
+  if (ctx->nknown_addr == 0) {
     return 0;
   }
 
   time(&now);
 
-  for (i = 0; i < cli->nknown_addr; i++) {
-    temp = &cli->known_addrs[i];
+  for (i = 0; i < ctx->nknown_addr; i++) {
+    temp = &ctx->known_addrs[i];
     if (latest == NULL ||
         latest->last_recv_time < temp->last_recv_time) {
       latest = temp;
@@ -86,8 +95,8 @@ int strategy_choose_remote_addr(cli_info_t *cli, struct sockaddr *remote_addrp, 
   } else {
     chosen = randombytes_uniform(total_not_timed_out);
     total_not_timed_out = 0;
-    for (i = 0; i < cli->nknown_addr; i++) {
-      temp = &cli->known_addrs[i];
+    for (i = 0; i < ctx->nknown_addr; i++) {
+      temp = &ctx->known_addrs[i];
       if (now - temp->last_recv_time <= ADDR_TIMEOUT) {
         if (total_not_timed_out == chosen) {
           load_addr(temp, remote_addrp, remote_addrlen);
@@ -100,7 +109,7 @@ int strategy_choose_remote_addr(cli_info_t *cli, struct sockaddr *remote_addrp, 
   return 0;
 }
 
-void strategy_update_remote_addr_list(cli_info_t *cli, struct sockaddr *remote_addrp, socklen_t remote_addrlen)
+void strategy_update_remote_addr_list(strategy_ctx_t *ctx, struct sockaddr *remote_addrp, socklen_t remote_addrlen)
 {
   int i;
   time_t now;
@@ -108,29 +117,29 @@ void strategy_update_remote_addr_list(cli_info_t *cli, struct sockaddr *remote_a
   time(&now);
 
   // if already in list, update time and return
-  for (i = 0; i < cli->nknown_addr; i++) {
-    if (remote_addrlen == cli->known_addrs[i].addrlen) {
-      if (0 == memcmp(remote_addrp, &cli->known_addrs[i].addr,
+  for (i = 0; i < ctx->nknown_addr; i++) {
+    if (remote_addrlen == ctx->known_addrs[i].addrlen) {
+      if (0 == memcmp(remote_addrp, &ctx->known_addrs[i].addr,
                       remote_addrlen)) {
-        cli->known_addrs[i].last_recv_time = now;
+        ctx->known_addrs[i].last_recv_time = now;
         return;
       }
     }
   }
   // if address list is not full, just append remote addr
-  if (cli->nknown_addr < cli->ctx->concurrency) {
-    save_addr(&cli->known_addrs[cli->nknown_addr], remote_addrp,
+  if (ctx->nknown_addr < ctx->max_addrs) {
+    save_addr(&ctx->known_addrs[ctx->nknown_addr], remote_addrp,
               remote_addrlen, now);
-    cli->nknown_addr++;
+    ctx->nknown_addr++;
     return;
   }
   // if full, replace the oldest
   addr_info_t *oldest_addr_info = NULL;
-  for (i = 0; i < cli->nknown_addr; i++) {
+  for (i = 0; i < ctx->nknown_addr; i++) {
     if (oldest_addr_info == NULL ||
         oldest_addr_info->last_recv_time >
-          cli->known_addrs[i].last_recv_time) {
-      oldest_addr_info = &cli->known_addrs[i];
+          ctx->known_addrs[i].last_recv_time) {
+      oldest_addr_info = &ctx->known_addrs[i];
     }
   }
   if (oldest_addr_info) {

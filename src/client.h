@@ -11,20 +11,15 @@
 #endif
 
 #include "uthash.h"
-
-/* the structure to store known client addresses for the server */
-typedef struct {
-  struct sockaddr_storage addr;
-  socklen_t addrlen;
-  time_t last_recv_time;
-} addr_info_t;
+#include "strategy.h"
 
 struct cli_ctx_t;
 
 typedef struct {
-  /* known client addrs for the server */
-  int nknown_addr;
-  addr_info_t *known_addrs;
+  /* known remote addrs for the server/cli */
+  //int nknown_addr;
+  //addr_info_t *known_addrs;
+	strategy_ctx_t *strategy;
 
 	char *pwd;
 	unsigned char *key;

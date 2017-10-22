@@ -343,6 +343,7 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
 int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct sockaddr_storage *addr, socklen_t addrlen)
 {
 	vpn_ctx_t *ctx = (vpn_ctx_t *)args;
+	cli_ctx_t *cli_ctx = ctx->cli_ctx;
 
 	//buf is equal to ctx->udp_buf + SHADOWVPN_PACKET_OFFSET, so data is already read to udp_buf;
 	if (-1 == crypto_decrypt(ctx->tun_buf, ctx->udp_buf,
@@ -358,7 +359,7 @@ int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct so
 			get_client_by_saddr(ctx->cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len - SHADOWVPN_OVERHEAD_LEN);
 			// now we got one client address, update the address list
 			if(ctx->cli_ctx->cli != NULL)
-				strategy_update_remote_addr_list(ctx->cli_ctx->cli, ctx->remote_addrp, ctx->remote_addrlen);
+				strategy_update_remote_addr_list(cli_ctx->cli->strategy, ctx->remote_addrp, ctx->remote_addrlen);
 			else{
 				//can't find client, means this address is not added to client, so drop it.
 				ctx->remote_addrlen = 0;
@@ -458,7 +459,7 @@ int vpn_run(vpn_ctx_t *ctx) {
 				get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
 
 				if(cli_ctx->cli != NULL)
-					strategy_choose_remote_addr(cli_ctx->cli,ctx->remote_addrp, &ctx->remote_addrlen);
+					strategy_choose_remote_addr(cli_ctx->cli->strategy,ctx->remote_addrp, &ctx->remote_addrlen);
 				else
 					ctx->remote_addrlen = 0;
 			}

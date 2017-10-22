@@ -43,7 +43,8 @@ int client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
 	bzero(cli, sizeof(cli_info_t));
 
 	cli->ctx = ctx;
-	cli->known_addrs = calloc(ctx->concurrency, sizeof(addr_info_t));
+	cli->strategy = strategy_init(ctx->concurrency);
+
 	// assign IP based on tun IP and user tokens
 	// for example:
 	//		 tun IP is 10.7.0.1
