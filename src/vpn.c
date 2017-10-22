@@ -407,8 +407,7 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
     }
   }
   if (args->mode == SHADOWVPN_MODE_SERVER) {
-		ctx->cli_ctx = malloc(sizeof(cli_ctx_t));
-		client_init(ctx->cli_ctx, args);
+		ctx->cli_ctx = client_init(args);
   }
   ctx->args = args;
   return 0;

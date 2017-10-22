@@ -21,9 +21,11 @@
 typedef struct iphdr ipv4_hdr_t;
 typedef struct ipv6hdr ipv6_hdr_t;
 
-int client_init(cli_ctx_t *ctx, shadowvpn_args_t *args)
+cli_ctx_t * client_init(shadowvpn_args_t *args)
 {
   int i;
+
+	cli_ctx_t *ctx = malloc(sizeof(cli_ctx_t));
   bzero(ctx, sizeof(cli_ctx_t));
 	//init ctx
 	ctx->concurrency = args->concurrency;
@@ -32,7 +34,7 @@ int client_init(cli_ctx_t *ctx, shadowvpn_args_t *args)
   for (i = 0; i < args->clients; i++) {
 		client_add(ctx, htonl(args->netip + i + 1), args->password);
   }
-	return 0;
+	return ctx;
 }
 
 int client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
@@ -152,9 +154,9 @@ int get_client_by_saddr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen)
 	return get_client_by_ipaddr(ctx, buf, buflen, 1);
 }
 #else
-int client_init(cli_ctx_t *ctx, shadowvpn_args_t *args)
+cli_ctx_t * client_init(shadowvpn_args_t *args)
 {
-	return 0;
+	return NULL;
 }
 int client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd)
 {

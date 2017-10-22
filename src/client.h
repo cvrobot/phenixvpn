@@ -53,7 +53,7 @@ typedef struct cli_ctx_t{
   cli_info_t *ip_to_clients;
 } cli_ctx_t;
 
-int client_init(cli_ctx_t *ctx, shadowvpn_args_t *args);
+cli_ctx_t *client_init(shadowvpn_args_t *args);
 int client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd);
 cli_info_t *client_check_ip(cli_ctx_t *ctx, uint32_t netip);
 int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd);
