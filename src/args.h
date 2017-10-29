@@ -51,12 +51,11 @@ typedef struct {
   uint16_t concurrency;
 	uint32_t clients;
 	//in host order, linux srv start addres, and tun ip for client,
-	uint32_t netip;
+	const char *net_ip;
+  int net_mask;
   const char *up_script;
   const char *down_script;
 #ifdef TARGET_WIN32
-  const char *tun_ip;
-  int tun_mask;
   int tun_port;
 #endif
 } shadowvpn_args_t;

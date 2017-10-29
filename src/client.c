@@ -24,6 +24,15 @@ typedef struct ipv6hdr ipv6_hdr_t;
 cli_ctx_t * client_init(shadowvpn_args_t *args)
 {
   int i;
+	uint32_t addr;
+	in_addr_t n_addr = inet_addr(args->net_ip);
+
+	if (n_addr == INADDR_NONE) {
+		errf("Error: invalid net IP in config file: %s", args->net_ip);
+		return NULL;
+	}
+
+	addr = ntohl((uint32_t)n_addr);
 
 	cli_ctx_t *ctx = malloc(sizeof(cli_ctx_t));
   bzero(ctx, sizeof(cli_ctx_t));
@@ -32,7 +41,7 @@ cli_ctx_t * client_init(shadowvpn_args_t *args)
 
 	//add client
   for (i = 0; i < args->clients; i++) {
-		client_add(ctx, htonl(args->netip + i + 1), args->password);
+		client_add(ctx, htonl(addr + i + 1), args->password);
   }
 	return ctx;
 }

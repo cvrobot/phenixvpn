@@ -104,12 +104,10 @@ static int parse_config_file(shadowvpn_args_t *args, const char *filename) {
     errf("password not set in config file");
     return -1;
   }
-#ifdef TARGET_WIN32
-  if (!args->tun_ip) {
+  if (args->net_ip == 0) {
     errf("tunip not set in config file");
     return -1;
   }
-#endif
   return 0;
 }
 
@@ -139,9 +137,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     }
   } else if (strcmp("password", key) == 0) {
     args->password = strdup(value);
-	}
-#ifndef TARGET_WIN32
-  else if (strcmp("net", key) == 0) {
+	} else if (strcmp("net", key) == 0) {
     char *p = strchr(value, '/');
     if (p) *p = 0;
 		int mask = atoi(++p);
@@ -149,15 +145,11 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
       errf("net mask should >= 1 && <= 31");
 			return -1;
 		}
-    in_addr_t addr = inet_addr(value);
-    if (addr == INADDR_NONE) {
-      errf("warning: invalid net IP in config file: %s", value);
-    }
-    args->netip = ntohl((uint32_t)addr);
+    args->net_ip = strdup(value);
+		args->net_mask = mask;//windows use this
 		args->clients = pow(2, 32 - mask) - 2;//*.*.*.0 not used, *.*.*.1 for srv use
 		//logf("net mask:%d clients:%d", mask, args->clients);
   }
-#endif
 	else if (strcmp("mode", key) == 0) {
     if (strcmp("server", value) == 0) {
       args->mode = SHADOWVPN_MODE_SERVER;
@@ -192,11 +184,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     args->down_script = strdup(value);
   }
 #ifdef TARGET_WIN32
-  else if (strcmp("tunip", key) == 0) {
-    args->tun_ip = strdup(value);
-  } else if (strcmp("tunmask", key) == 0) {
-    args->tun_mask = (int) atol(value);
-  } else if (strcmp("tunport", key) == 0) {
+  else if (strcmp("tunport", key) == 0) {
     args->tun_port = (int) atol(value);
   }
 #endif
@@ -217,8 +205,8 @@ static void load_default_args(shadowvpn_args_t *args) {
   args->pid_file = "/var/run/shadowvpn.pid";
   args->log_file = "/var/log/shadowvpn.log";
   args->concurrency = 1;
+  args->net_mask = 24;
 #ifdef TARGET_WIN32
-  args->tun_mask = 24;
   args->tun_port = TUN_DELEGATE_PORT;
 #endif
 }

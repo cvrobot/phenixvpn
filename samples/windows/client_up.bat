@@ -18,7 +18,8 @@ route add %server% %orig_gw%
 REM configure IP address and MTU of VPN interface
 REM netsh interface ip set interface %orig_intf% ignoredefaultroutes=enabled > NUL
 REM netsh interface ip set address name="%intf%" static %tunip% 255.255.255.0 > NUL
-netsh interface ipv4 set address name="%intf%" static %tunip% 255.255.255.0 %remote_tun_ip% gwmetric=10000 > NUL
+REM netsh interface ipv4 set address name="%intf%" static %tunip% 255.255.255.0 %remote_tun_ip% gwmetric=10000 > NUL
+netsh interface ipv4 set address name="%intf%" static %net% 255.255.255.0 %remote_tun_ip% gwmetric=10000
 netsh interface ip set interface "%intf%" metric=1 > NUL
 netsh interface ipv4 set subinterface "%intf%" mtu=%mtu% > NUL
 

@@ -273,7 +273,7 @@ DWORD WINAPI tun_reader(LPVOID arg) {
   return 0;
 }
 
-int tun_open(const char *tun_device, const char *tun_ip, int tun_mask,
+int tun_open(const char *tun_device, const char*net_ip, int net_mask,
              int tun_port) {
   char adapter[TUN_NAME_BUF_SIZE];
   char tapfile[TUN_NAME_BUF_SIZE * 2];
@@ -301,7 +301,7 @@ int tun_open(const char *tun_device, const char *tun_ip, int tun_mask,
     errf("can not open device");
     return -1;
   }
-  if (0 != tun_setip(tun_ip, tun_mask)) {
+  if (0 != tun_setip(net_ip, net_mask)) {
     errf("can not connect device");
     return -1;
   }

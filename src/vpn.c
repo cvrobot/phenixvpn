@@ -320,7 +320,7 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
     err("CreateEvent");
     return -1;
   }
-  if (-1 == (ctx->tun = tun_open(args->intf, args->tun_ip, args->tun_mask,
+  if (-1 == (ctx->tun = tun_open(args->intf, args->net_ip, args->net_mask,
                                  args->tun_port))) {
     errf("failed to create tun device");
     return -1;
@@ -335,6 +335,8 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
 
   if (args->mode == SHADOWVPN_MODE_SERVER) {
 		ctx->cli_ctx = client_init(args);
+		if(ctx->cli_ctx == NULL)
+			return -1;
   }
   ctx->args = args;
   return 0;
