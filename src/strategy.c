@@ -75,7 +75,7 @@ int strategy_choose_remote_addr(strategy_ctx_t *ctx, struct sockaddr *remote_add
   addr_info_t *latest = NULL, *temp;
 
   if (ctx->nknown_addr == 0) {
-    return 0;
+    return -1;
   }
 
   time(&now);

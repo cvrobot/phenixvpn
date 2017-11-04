@@ -147,7 +147,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
 		}
     args->net_ip = strdup(value);
 		args->net_mask = mask;//windows use this
-		args->clients = pow(2, 32 - mask) - 2;//*.*.*.0 not used, *.*.*.1 for srv use
+		args->clients = pow(2, 32 - mask) -1;//*.*.*.0 not used, *.*.*.1 for srv use, max client *.*.*.255
 		//logf("net mask:%d clients:%d", mask, args->clients);
   }
 	else if (strcmp("mode", key) == 0) {

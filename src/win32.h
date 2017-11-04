@@ -36,6 +36,39 @@
 #define TUN_DELEGATE_PORT 55151
 
 extern HANDLE dev_handle;
+typedef unsigned char __u8;
+typedef unsigned short __be16;
+typedef unsigned short __sum16;
+typedef unsigned int __be32;
+
+struct ipv6hdr {
+	__u8			priority:4,
+				version:4;
+	__u8			flow_lbl[3];
+
+	__be16			payload_len;
+	__u8			nexthdr;
+	__u8			hop_limit;
+
+	struct	in6_addr	saddr;
+	struct	in6_addr	daddr;
+};
+
+struct iphdr {
+	__u8	ihl:4,
+		version:4;
+
+	__u8	tos;
+	__be16	tot_len;
+	__be16	id;
+	__be16	frag_off;
+	__u8	ttl;
+	__u8	protocol;
+	__sum16	check;
+	__be32	saddr;
+	__be32	daddr;
+	/*The options start here. */
+};
 
 int tun_open(const char *tun_device, const char *net_ip, int net_mask, int tun_port);
 int setenv(const char *name, const char *value, int overwrite);
