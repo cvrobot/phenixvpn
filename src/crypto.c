@@ -22,8 +22,9 @@
 #include <string.h>
 #include "crypto_secretbox_salsa208poly1305.h"
 
+#define CRYPTO_KEY_LEN (32)
 // will not copy key any more
-static unsigned char key[32];
+static unsigned char key[CRYPTO_KEY_LEN];
 
 int crypto_init() {
   if (-1 == sodium_init())
@@ -39,23 +40,71 @@ int crypto_set_password(const char *password,
                             password_len, NULL, 0);
 }
 
-int crypto_encrypt(unsigned char *c, unsigned char *m,
-                   unsigned long long mlen) {
+unsigned char *crypto_gen_key(const char *password, unsigned long long password_len) {
+  int ret;
+	char *k = malloc(CRYPTO_KEY_LEN);
+
+	ret = crypto_generichash(k, CRYPTO_KEY_LEN, (unsigned char *)password,
+                            password_len, NULL, 0);
+	if(ret != 0){
+		free(k);
+		return NULL;
+	}else
+		return k;
+}
+
+int crypto_set_token(unsigned char *c, unsigned int token)
+{
+	int i = 0;
+	unsigned char *r = c + 0;
+	unsigned char *n = c + 8;
+	unsigned char *t = (unsigned char *)&token;
+	for(i = 0;i < 4; i++)
+		*(r +i) = *(n + i) + *(t + i);
+
+	return 0;
+}
+
+int crypto_get_token(unsigned char *c, unsigned int *token)
+{
+	int i = 0;
+	unsigned char *r = c + 0;
+	unsigned char *n = c + 8;
+	unsigned char *t = (unsigned char *)token;
+	for(i = 0;i < 4; i++)
+		*(t +i) = *(r + i) - *(n + i);
+
+	return 0;
+
+}
+
+int crypto_encrypt_ext(unsigned char *c, unsigned char *m,
+                   unsigned long long mlen, unsigned char *k) {
   unsigned char nonce[8];
   randombytes_buf(nonce, 8);
-  int r = crypto_secretbox_salsa208poly1305(c, m, mlen + 32, nonce, key);
+  int r = crypto_secretbox_salsa208poly1305(c, m, mlen + 32, nonce, k);
   if (r != 0) return r;
   // copy nonce to the head
   memcpy(c + 8, nonce, 8);
   return 0;
 }
 
-int crypto_decrypt(unsigned char *m, unsigned char *c,
-                   unsigned long long clen) {
+int crypto_encrypt(unsigned char *c, unsigned char *m,
+                   unsigned long long mlen) {
+  return crypto_encrypt_ext(c, m, mlen, key);
+}
+
+int crypto_decrypt_ext(unsigned char *m, unsigned char *c,
+                   unsigned long long clen, unsigned char *k) {
   unsigned char nonce[8];
   memcpy(nonce, c + 8, 8);
-  int r = crypto_secretbox_salsa208poly1305_open(m, c, clen + 32, nonce, key);
+  int r = crypto_secretbox_salsa208poly1305_open(m, c, clen + 32, nonce, k);
   if (r != 0) return r;
   return 0;
+}
+
+ int crypto_decrypt(unsigned char *m, unsigned char *c,
+                   unsigned long long clen) {
+  return crypto_decrypt_ext(m, c, clen, key);
 }
 

@@ -352,10 +352,14 @@ int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct so
 {
 	vpn_ctx_t *ctx = (vpn_ctx_t *)args;
 	cli_ctx_t *cli_ctx = ctx->cli_ctx;
-
+	uint32_t netip;
 	//buf is equal to ctx->udp_buf + SHADOWVPN_PACKET_OFFSET, so data is already read to udp_buf;
-	if (-1 == crypto_decrypt(ctx->tun_buf, ctx->udp_buf,
-													len - SHADOWVPN_OVERHEAD_LEN)) {
+
+	crypto_get_token(ctx->udp_buf, &netip);
+	if(get_client_by_netip(cli_ctx, netip))
+		return -1;
+	if (-1 == crypto_decrypt_ext(ctx->tun_buf, ctx->udp_buf,
+													len, cli_ctx->cli->key)) {
 		errf("dropping invalid packet, maybe wrong password");
 		return 0;
 	} else {
@@ -364,9 +368,10 @@ int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct so
 		memcpy(ctx->remote_addrp, addr, addrlen);
 		ctx->remote_addrlen = addrlen;
 		if(ctx->args->mode == SHADOWVPN_MODE_CLIENT){
-			get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len - SHADOWVPN_OVERHEAD_LEN);
+			//get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len);
+			//already set cli to cli_ctx at client_init
 		}else{
-			get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len - SHADOWVPN_OVERHEAD_LEN);
+			get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len);
 		}
 
 		// now we got one client address, update the address list
@@ -375,11 +380,11 @@ int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct so
 		else{
 			//can't find client, means this address is not added to client, so drop it.
 			ctx->remote_addrlen = 0;
+			errf("%s get client fail", __func__);
 		}
 
 		if(ctx->remote_addrlen){
-			if (-1 == tun_write(ctx->tun, ctx->tun_buf + SHADOWVPN_ZERO_BYTES,
-						len - SHADOWVPN_OVERHEAD_LEN)) {
+			if (-1 == tun_write(ctx->tun, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len)) {
 				if (errno == EAGAIN || errno == EWOULDBLOCK) {
 					// do nothing
 				} else if (errno == EPERM || errno == EINTR || errno == EINVAL) {
@@ -468,7 +473,8 @@ int vpn_run(vpn_ctx_t *ctx) {
 		
 		if(ctx->args->mode == SHADOWVPN_MODE_CLIENT){
 			//for client we just get the only cli.
-			get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
+			//get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
+			//already set cli to cli_ctx at client_init
 		}else{
 			get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
 		}
@@ -478,12 +484,14 @@ int vpn_run(vpn_ctx_t *ctx) {
 				in.s_addr = cli_ctx->cli->output_tun_ip;
 				errf("can't get remote addr,cli ip:%s",inet_ntoa(in));
 			}
-		}else
+		}else{
 			ctx->remote_addrlen = 0;
-
+			//errf("%s get client fail", __func__);
+		}
       if (ctx->remote_addrlen) {
-        crypto_encrypt(ctx->udp_buf, ctx->tun_buf, r);
-		r = channel_send_data(ctx->channel, ctx->udp_buf + SHADOWVPN_PACKET_OFFSET,
+        crypto_encrypt_ext(ctx->udp_buf, ctx->tun_buf, r, cli_ctx->cli->key);
+				crypto_set_token(ctx->udp_buf, cli_ctx->cli->output_tun_ip);
+		r = channel_send_data(ctx->channel, ctx->udp_buf,
            SHADOWVPN_OVERHEAD_LEN + r,
            ctx->remote_addrp, ctx->remote_addrlen);
         if (r == -1) {
@@ -492,7 +500,7 @@ int vpn_run(vpn_ctx_t *ctx) {
       }
     }
 
-		channel_recv_data(ctx->channel, &readset, ctx->udp_buf + SHADOWVPN_PACKET_OFFSET,
+		channel_recv_data(ctx->channel, &readset, ctx->udp_buf,
 				SHADOWVPN_OVERHEAD_LEN + ctx->args->mtu, (void*)ctx, vpn_handle_read_data);
   }
   free(ctx->tun_buf);

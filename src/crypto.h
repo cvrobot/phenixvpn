@@ -26,18 +26,20 @@ int crypto_init();
 
 // TODO use a struct to hold context instead
 /* call when password changed */
-int crypto_set_password(const char *password,
-                        unsigned long long password_len);
-
-int crypto_encrypt(unsigned char *c, unsigned char *m,
-                   unsigned long long mlen);
-
-int crypto_decrypt(unsigned char *m, unsigned char *c,
-                   unsigned long long clen);
+int crypto_set_password(const char *password, unsigned long long password_len);
+unsigned char *crypto_gen_key(const char *password, unsigned long long password_len);
+int crypto_set_token(unsigned char *c, unsigned int token);
+int crypto_get_token(unsigned char *c, unsigned int *token);
+int crypto_encrypt_ext(unsigned char *c, unsigned char *m, unsigned long long mlen, unsigned char *k);
+int crypto_encrypt(unsigned char *c, unsigned char *m, unsigned long long mlen);
+int crypto_decrypt_ext(unsigned char *m, unsigned char *c, unsigned long long clen, unsigned char *k);
+int crypto_decrypt(unsigned char *m, unsigned char *c, unsigned long long clen);
 
 #define SHADOWVPN_KEY_LEN 32
 #define SHADOWVPN_ZERO_BYTES 32
-#define SHADOWVPN_OVERHEAD_LEN 24
-#define SHADOWVPN_PACKET_OFFSET 8
-
+#define SHADOWVPN_OVERHEAD_LEN 32
+#
+//tun_buf:salsa208_REV,nonce,mac,data
+//udp_buf:token cipher(,8),nonce(8),mac(16),ciphertext
+//overhead: nonce + mac
 #endif

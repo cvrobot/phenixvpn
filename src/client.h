@@ -49,10 +49,10 @@ typedef struct cli_ctx_t{
 } cli_ctx_t;
 
 cli_ctx_t *client_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t addrlen);
-int client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd, struct sockaddr *addr, socklen_t addrlen);
+cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd, struct sockaddr *addr, socklen_t addrlen);
 char *client_show_cli_ip(cli_info_t *cli, char *ip);
 char *client_show_curr_ip(cli_ctx_t *ctx, char *ip);
-cli_info_t *client_check_ip(cli_ctx_t *ctx, uint32_t netip);
+int get_client_by_netip(cli_ctx_t *ctx, uint32_t netip);
 int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen);
 int client_remove(cli_ctx_t *ctx, uint32_t netip);
 int get_client_by_ipaddr(cli_ctx_t *ctx, struct sockaddr_storage *addr, socklen_t addrlen);

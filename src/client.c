@@ -50,23 +50,23 @@ cli_ctx_t * client_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t
 	ctx->concurrency = args->concurrency;
 	//add client
 	if(args->clients == 1){
-		//add a client 
-		i = 0;
+		//add a client,and set it to ctx
+		sprintf(pwd, "%s%02d",args->password, netip);
+		ctx->cli = client_add(ctx, htonl(netip), pwd, addr, addrlen);
 	}else{
 		//*.*.*.0 not used, *.*.*.1 reserved for srv
-		//add a sets of client, for reponse client
-		i = 1;//asume netip:*.*.*.1 so alloc(*.*.*.2~*.*.*.255)
+		//add a sets of clients, for reponse client
+		//asume netip:*.*.*.1 so alloc(*.*.*.2~*.*.*.255)
+	  for (i = 1; i < args->clients; i++) {
+			sprintf(pwd, "%s%02d",args->password, netip + i);
+			client_add(ctx, htonl(netip + i), pwd, addr, addrlen);
+		}
 	}
-  for (; i < args->clients; i++) {
-			//TODO:only support same password now.
-  		//sprintf(pwd, "%s%02d",args->password, netip + i);
-  		sprintf(pwd, "%s",args->password);
-		client_add(ctx, htonl(netip + i), pwd, addr, addrlen);
-  }
+
 	return ctx;
 }
 
-int client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen)
+cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen)
 {
 	cli_info_t *cli = malloc(sizeof(cli_info_t));
 	bzero(cli, sizeof(cli_info_t));
@@ -85,15 +85,14 @@ int client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr 
 	//		 client IPs will be 10.7.0.2, 10.7.0.3, 10.7.0.4, etc
 	cli->output_tun_ip = netip;
 	cli->pwd = strdup(pwd);
-	//TODO:use key
-	//cli->key = crypto_gen_key(pwd, strlen(pwd));
+	cli->key = crypto_gen_key(pwd, strlen(pwd));
 	struct in_addr in;
 	in.s_addr = netip;
 	logf("allocate output_tun_ip %s, pwd:%s", inet_ntoa(in), pwd);
 	// add to hash: ctx->ip_to_clients[output_tun_ip] = client
 	HASH_ADD(hh, ctx->ip_to_clients, output_tun_ip, 4, cli);
 
-	return 0;
+	return cli;
 }
 
 char *client_show_cli_ip(cli_info_t *cli, char *ip)
@@ -109,25 +108,25 @@ char *client_show_curr_ip(cli_ctx_t *ctx, char *ip){
 	return client_show_cli_ip(ctx->cli, ip);
 }
 
-cli_info_t *client_check_ip(cli_ctx_t *ctx, uint32_t netip)
+int get_client_by_netip(cli_ctx_t *ctx, uint32_t netip)
 {
-	cli_info_t *cli = NULL;
-
 	struct in_addr in;
 	in.s_addr = netip;
+	ctx->cli = NULL;
 
 	HASH_FIND(hh, ctx->ip_to_clients, &netip, 4, ctx->cli);
-	if (cli == NULL) {
+	if (ctx->cli == NULL) {
 		logf("nat: client not found for given netip:%s", inet_ntoa(in));
-	}else{
-		logf("nat: client found for given netip:%s", inet_ntoa(in));
+		return -1;
 	}
-	return cli;
+
+	//logf("nat: client found for given netip:%s", inet_ntoa(in));
+	return 0;
 }
 
 int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen)
 {
-	if(client_check_ip(ctx, netip) == NULL){
+	if(get_client_by_netip(ctx, netip) != 0){
 		client_add(ctx, netip, pwd, addr, addrlen);
 		return 0;
 	}else{
@@ -141,11 +140,10 @@ int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct soc
 
 int client_remove(cli_ctx_t *ctx, uint32_t netip)
 {
-	cli_info_t *cli = client_check_ip(ctx, netip);
-	if(cli != NULL){
-		HASH_DELETE(hh, ctx->ip_to_clients, cli);
-		free(cli->pwd);
-		free(cli);
+	if(get_client_by_netip(ctx, netip)){
+		HASH_DELETE(hh, ctx->ip_to_clients, ctx->cli);
+		free(ctx->cli->pwd);
+		free(ctx->cli);
 	}
 	return 0;
 }
@@ -194,6 +192,7 @@ int get_client_by_iphdr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int i
 		//inet_ntop(AF_INET6, &ipv6hdr->daddr, da_s, INET6_ADDRSTRLEN);
 		//inet_ntop(AF_INET6, &ipv6hdr->saddr, sa_s, INET6_ADDRSTRLEN);
 		//errf("%s ipv6 not support version:0x%x,is_saddr:%d, saddr:%s,daddr:%s", __func__, iphdr->version, is_saddr, sa_s, da_s);
+		logf("%s ipv6 not support version:0x%x", __func__, iphdr->version);
 		return 0;
 	}
 

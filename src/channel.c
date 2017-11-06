@@ -199,7 +199,7 @@ int channel_recv_data(vpn_channel_t *ch, fd_set *set,
 			if (r <= 0)
 				continue;
 
-			handler(ctx, buf, r, &addr, addrlen);
+			handler(ctx, buf, r - SHADOWVPN_OVERHEAD_LEN, &addr, addrlen);
 		}
 	}
 	return 0;
