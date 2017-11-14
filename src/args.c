@@ -209,9 +209,12 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
 static void load_default_args(shadowvpn_args_t *args) {
 #ifdef TARGET_DARWIN
   args->intf = "utun0";
+#elif TARGET_WIN32
+  args->intf = NULL;
 #else
   args->intf = "tun0";
 #endif
+
   args->mtu = 1440;
   args->pid_file = "/var/run/shadowvpn.pid";
   args->log_file = "/var/log/shadowvpn.log";

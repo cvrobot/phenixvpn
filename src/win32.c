@@ -491,7 +491,7 @@ int tun_open(const char *tun_device, const char*net_ip, int net_mask,
 
   memset(adapter, 0, sizeof(adapter));
   memset(if_name, 0, sizeof(if_name));
-  get_device(adapter, sizeof(adapter), NULL);//tun_device
+  get_device(adapter, sizeof(adapter), tun_device);
 
   if (strlen(adapter) == 0 || strlen(if_name) == 0) {
     if (tun_device) {
