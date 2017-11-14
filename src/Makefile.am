@@ -5,7 +5,7 @@ lib_LTLIBRARIES = libshadowvpn.la
 SUBDIRS = ../libsodium
 
 AM_CFLAGS = -I$(srcdir)/../libsodium/src/libsodium/include -lm
-
+#CFLAGS = -g -O0
 libshadowvpn_la_SOURCES = log.c \
 	log.h \
 	crypto_secretbox_salsa208poly1305.h \

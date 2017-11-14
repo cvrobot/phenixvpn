@@ -14,11 +14,11 @@
 #include "strategy.h"
 
 struct cli_ctx_t;
-
+typedef enum{
+	CLI_CLI,
+	CLI_SRV
+}cli_type;
 typedef struct {
-  /* known remote addrs for the server/cli */
-  //int nknown_addr;
-  //addr_info_t *known_addrs;
 	strategy_ctx_t *strategy;
 
 	char *pwd;
@@ -39,8 +39,10 @@ typedef struct {
 }cli_info_t;
 
 typedef struct cli_ctx_t{
-	uint16_t concurrency;
+	uint16_t concurrency;//remote socket no.
+	uint16_t channels;//local channels
 
+	cli_type type;
 	cli_info_t *cli;
   /* clients map
    TODO: use index instead of hash
@@ -48,12 +50,12 @@ typedef struct cli_ctx_t{
   cli_info_t *ip_to_clients;
 } cli_ctx_t;
 
-cli_ctx_t *client_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t addrlen);
-cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd, struct sockaddr *addr, socklen_t addrlen);
+cli_ctx_t *client_init(shadowvpn_args_t *args, int is_cli);
+cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char* pwd);
 char *client_show_cli_ip(cli_info_t *cli, char *ip);
 char *client_show_curr_ip(cli_ctx_t *ctx, char *ip);
 int get_client_by_netip(cli_ctx_t *ctx, uint32_t netip);
-int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen);
+int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd);
 int client_remove(cli_ctx_t *ctx, uint32_t netip);
 int get_client_by_ipaddr(cli_ctx_t *ctx, struct sockaddr_storage *addr, socklen_t addrlen);
 int get_client_by_iphdr(cli_ctx_t *ctx, unsigned char *buf, size_t buflen, int is_saddr);

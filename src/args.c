@@ -131,8 +131,18 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
       errf("concurrency should >= 1");
       return -1;
     }
-    if (args->concurrency > 100) {
-      errf("concurrency should <= 100");
+    if (args->concurrency > 32) {
+      errf("concurrency should <= 32");
+      return -1;
+    }
+  } else if (strcmp("channels", key) == 0) {
+    args->channels = atol(value);
+    if (args->channels == 0) {
+      errf("channels should >= 1");
+      return -1;
+    }
+    if (args->channels > 32) {
+      errf("channels should <= 32");
       return -1;
     }
   } else if (strcmp("password", key) == 0) {
@@ -205,6 +215,7 @@ static void load_default_args(shadowvpn_args_t *args) {
   args->pid_file = "/var/run/shadowvpn.pid";
   args->log_file = "/var/log/shadowvpn.log";
   args->concurrency = 1;
+  args->channels = 1;
   args->net_mask = 24;
 #ifdef TARGET_WIN32
   args->tun_port = TUN_DELEGATE_PORT;

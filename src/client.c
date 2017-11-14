@@ -26,19 +26,16 @@ typedef unsigned long in_addr_t;
 typedef struct iphdr ipv4_hdr_t;
 typedef struct ipv6hdr ipv6_hdr_t;
 
-cli_ctx_t * client_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t addrlen)
+cli_ctx_t * client_init(shadowvpn_args_t *args, int is_cli)
 {
-  int i;
+	int i;
+	struct sockaddr addr;
+	socklen_t addrlen;
 	uint32_t netip;
 	in_addr_t n_addr = inet_addr(args->net_ip);
 	char pwd[50] = {0};
 	if (n_addr == INADDR_NONE) {
 		errf("Error: invalid net IP in config file: %s", args->net_ip);
-		return NULL;
-	}
-
-	if(args->clients > 1 && addr != NULL){
-		errf("Error: only client(clients == 1) need default remote addr");
 		return NULL;
 	}
 
@@ -48,37 +45,39 @@ cli_ctx_t * client_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t
   bzero(ctx, sizeof(cli_ctx_t));
 	//init ctx
 	ctx->concurrency = args->concurrency;
+	ctx->channels = args->channels;
+	ctx->type = is_cli?CLI_CLI:CLI_SRV;
 	//add client
-	if(args->clients == 1){
+	if(ctx->type == CLI_CLI){
 		//add a client,and set it to ctx
 		sprintf(pwd, "%s%02d",args->password, netip);
-		ctx->cli = client_add(ctx, htonl(netip), pwd, addr, addrlen);
+		ctx->cli = client_add(ctx, htonl(netip), pwd);
+		for(i = 0; i < args->concurrency; i++){
+			//for client side add default remote addr(or addr list),
+			//client will use these addresses to send data.
+			channel_udp_addr(args->server, args->port + i, &addr, &addrlen);
+			strategy_update_remote_addr_list(ctx->cli->strategy, 0, &addr, addrlen);
+		}
 	}else{
 		//*.*.*.0 not used, *.*.*.1 reserved for srv
 		//add a sets of clients, for reponse client
 		//asume netip:*.*.*.1 so alloc(*.*.*.2~*.*.*.255)
 	  for (i = 1; i < args->clients; i++) {
 			sprintf(pwd, "%s%02d",args->password, netip + i);
-			client_add(ctx, htonl(netip + i), pwd, addr, addrlen);
+			client_add(ctx, htonl(netip + i), pwd);
 		}
 	}
 
 	return ctx;
 }
 
-cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen)
+cli_info_t * client_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
 {
 	cli_info_t *cli = malloc(sizeof(cli_info_t));
 	bzero(cli, sizeof(cli_info_t));
 
 	cli->ctx = ctx;
-	cli->strategy = strategy_init(ctx->concurrency);
-
-	if(addr != NULL){
-		//for client side add default remote addr,
-		//client will get this addr to send data for the first time.
-		strategy_update_remote_addr_list(cli->strategy, addr, addrlen);
-	}
+	cli->strategy = strategy_init(ctx->concurrency, ctx->channels, ctx->type == CLI_CLI?STRATEGY_RND:STRATEGY_TIME);
 	// assign IP based on tun IP and user tokens
 	// for example:
 	//		 tun IP is 10.7.0.1
@@ -124,10 +123,10 @@ int get_client_by_netip(cli_ctx_t *ctx, uint32_t netip)
 	return 0;
 }
 
-int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd, struct sockaddr *addr, socklen_t addrlen)
+int client_check_add(cli_ctx_t *ctx, uint32_t netip, const char *pwd)
 {
 	if(get_client_by_netip(ctx, netip) != 0){
-		client_add(ctx, netip, pwd, addr, addrlen);
+		client_add(ctx, netip, pwd);
 		return 0;
 	}else{
 		struct in_addr in;

@@ -24,15 +24,16 @@ typedef struct {
   int *socks;
 }vpn_channel_t;
 
+int channel_udp_addr(const char *host, int port, struct sockaddr *addr, socklen_t* addrlen);
 int channel_udp_alloc(int if_bind, const char *host, int port,
                   struct sockaddr *addr, socklen_t* addrlen);
 
-vpn_channel_t *channel_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t* addrlen);
+vpn_channel_t *channel_init(shadowvpn_args_t *args, int bind);
 int channel_deinit(vpn_channel_t *ch);
 int channel_set_fd(vpn_channel_t *ch, fd_set *set);
-int channel_send_data(vpn_channel_t *ch, unsigned char *buf, int len,  struct sockaddr *addr,  socklen_t addrlen);
+int channel_send_data(vpn_channel_t *ch, int channel_id, unsigned char *buf, int len,  struct sockaddr *addr,  socklen_t addrlen);
 int channel_recv_data(vpn_channel_t *ch, fd_set *set,
 			unsigned char *buf, int len, void *ctx,
-			int (*handler)(void*, unsigned char *, ssize_t , struct sockaddr_storage *, socklen_t ));
+			int (*handler)(void*, int channel_id, unsigned char *, ssize_t , struct sockaddr_storage *, socklen_t ));
 
 #endif

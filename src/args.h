@@ -48,7 +48,8 @@ typedef struct {
   const char *server;
   uint16_t port;
   uint16_t mtu;
-  uint16_t concurrency;
+  uint16_t concurrency;//remote channel count
+  uint16_t channels;//local channel count
 	uint32_t clients;
 	//in host order, linux srv start addres, and tun ip for client,
 	const char *net_ip;

@@ -23,6 +23,35 @@ static int max(int a, int b) {
 }
 #endif
 
+int channel_udp_addr(const char *host, int port, struct sockaddr *addr, socklen_t* addrlen) {
+  struct addrinfo hints;
+  struct addrinfo *res;
+  int r;
+
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
+  if (0 != (r = getaddrinfo(host, NULL, &hints, &res))) {
+    errf("getaddrinfo: %s", gai_strerror(r));
+    return -1;
+  }
+
+  if (res->ai_family == AF_INET)
+    ((struct sockaddr_in *)res->ai_addr)->sin_port = htons(port);
+  else if (res->ai_family == AF_INET6)
+    ((struct sockaddr_in6 *)res->ai_addr)->sin6_port = htons(port);
+  else {
+    errf("unknown ai_family %d", res->ai_family);
+    freeaddrinfo(res);
+    return -1;
+  }
+  memcpy(addr, res->ai_addr, res->ai_addrlen);
+  *addrlen = res->ai_addrlen;
+	freeaddrinfo(res);
+
+  return 0;
+}
+
 int channel_udp_alloc(int if_bind, const char *host, int port,
                   struct sockaddr *addr, socklen_t* addrlen) {
   struct addrinfo hints;
@@ -87,25 +116,27 @@ int channel_udp_alloc(int if_bind, const char *host, int port,
   return -1;
 }
 
-//TODO: remove shadowvpn_args_t, remove sockaddr
-vpn_channel_t *channel_init(shadowvpn_args_t *args, struct sockaddr *addr, socklen_t* addrlen)
+//bind is used for bind fixed ports
+vpn_channel_t *channel_init(shadowvpn_args_t *args, int bind)
 {
 	int i = 0;
 	vpn_channel_t *ch =  malloc(sizeof(vpn_channel_t));
 
 	if (args->mode == SHADOWVPN_MODE_SERVER) {
-		ch->nsock = 1;
+		ch->nsock = args->channels;
 	} else {
 		// if we are client, we should have multiple sockets for each port
-		ch->nsock = args->concurrency;
+		ch->nsock = args->channels;
 	}
 	ch->socks = calloc(ch->nsock, sizeof(int));
 	for (i = 0; i < ch->nsock; i++) {
 		int *sock = ch->socks + i;
-		if (-1 == (*sock = channel_udp_alloc(args->mode == SHADOWVPN_MODE_SERVER,
-																		 args->server, args->port,
-																		 addr,
-																		 addrlen))) {
+
+		//this will bind port dynamic, so can't run it in docker
+		if (-1 == (*sock = channel_udp_alloc(bind,//args->mode == SHADOWVPN_MODE_SERVER,
+											 "0.0.0.0", args->port + i,
+											 NULL,
+											 NULL))) {
 			errf("failed to create UDP socket");
 			return NULL;
 		}
@@ -138,19 +169,26 @@ int channel_set_fd(vpn_channel_t *ch, fd_set *set)
 	return max_fd;
 }
 
-static int channel_choose_socket(vpn_channel_t *ch)
+static int channel_choose_socket(vpn_channel_t *ch, int id)
 {
-  // rule: just pick a random socket
+  uint32_t r;
   if (ch->nsock == 1) {
     return ch->socks[0];
   }
-  uint32_t r = randombytes_uniform(ch->nsock);
+  if(id >= 0){
+	r = (id)%ch->nsock;
+	if(id > ch->nsock){
+		errf("id:%d > nsock:%d", id, ch->nsock);
+	}
+  }else {
+	r = randombytes_uniform(ch->nsock);
+  }
   return ch->socks[r];
 }
 
-int channel_send_data(vpn_channel_t *ch, unsigned char *buf, int len,  struct sockaddr *addr,  socklen_t addrlen)
+int channel_send_data(vpn_channel_t *ch, int channel_id, unsigned char *buf, int len,  struct sockaddr *addr,  socklen_t addrlen)
 {
-	int sock = channel_choose_socket(ch);
+	int sock = channel_choose_socket(ch, channel_id);
 
 	ssize_t r = sendto(sock, buf, len, 0, addr, addrlen);
 	if (r == -1) {
@@ -171,16 +209,16 @@ int channel_send_data(vpn_channel_t *ch, unsigned char *buf, int len,  struct so
 
 int channel_recv_data(vpn_channel_t *ch, fd_set *set,
 			unsigned char *buf, int len, void *ctx,
-			int (*handler)(void*, unsigned char *, ssize_t , struct sockaddr_storage *, socklen_t ))
+			int (*handler)(void*, int, unsigned char *, ssize_t , struct sockaddr_storage *, socklen_t ))
 {
-	int i;
+	int id;
   ssize_t r;
 	// only change remote addr if decryption succeeds
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof(addr);
 
-	for (i = 0; i < ch->nsock; i++) {
-		int sock = ch->socks[i];
+	for (id = 0; id <= ch->nsock; id++) {
+		int sock = ch->socks[id];
 		if (FD_ISSET(sock, set)) {
  			r = recvfrom(sock, buf, len, 0, (struct sockaddr *)&addr,	&addrlen);
 			if (r == -1) {
@@ -199,7 +237,7 @@ int channel_recv_data(vpn_channel_t *ch, fd_set *set,
 			if (r <= 0)
 				continue;
 
-			handler(ctx, buf, r - SHADOWVPN_OVERHEAD_LEN, &addr, addrlen);
+			handler(ctx, id, buf, r - SHADOWVPN_OVERHEAD_LEN, &addr, addrlen);
 		}
 	}
 	return 0;

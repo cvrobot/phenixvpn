@@ -278,8 +278,6 @@ static int max(int a, int b) {
 
 int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
   int i;
-  struct sockaddr *def_addr = NULL;
-  socklen_t def_addrlen = 0;
 #ifdef TARGET_WIN32
   WORD wVersionRequested;
   WSADATA wsaData;
@@ -329,26 +327,20 @@ int vpn_ctx_init(vpn_ctx_t *ctx, shadowvpn_args_t *args) {
   }
 #endif
 
-	ctx->channel = channel_init(args, ctx->remote_addrp, &ctx->remote_addrlen);
+	ctx->channel = channel_init(args, args->mode == SHADOWVPN_MODE_SERVER);
 	if(ctx->channel == NULL){
 		close(ctx->tun);
 		return -1;
 	}
-	if(args->mode == SHADOWVPN_MODE_CLIENT){
-		args->clients = 1;//set this before client_init, because client is both used by srv and cli
-		//set default remote addr for client side, client will send data first.
-		def_addr = ctx->remote_addrp;
-		def_addrlen = ctx->remote_addrlen;
-	}
-	
-	ctx->cli_ctx = client_init(args, def_addr, def_addrlen);
+
+	ctx->cli_ctx = client_init(args, args->mode == SHADOWVPN_MODE_CLIENT);
 	if(ctx->cli_ctx == NULL)
 		return -1;
   ctx->args = args;
   return 0;
 }
 
-int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct sockaddr_storage *addr, socklen_t addrlen)
+int vpn_handle_read_data(void * args, int channel_id, unsigned char *buf, ssize_t len, struct sockaddr_storage *addr, socklen_t addrlen)
 {
 	vpn_ctx_t *ctx = (vpn_ctx_t *)args;
 	cli_ctx_t *cli_ctx = ctx->cli_ctx;
@@ -370,13 +362,16 @@ int vpn_handle_read_data(void * args, unsigned char *buf, ssize_t len, struct so
 		if(ctx->args->mode == SHADOWVPN_MODE_CLIENT){
 			//get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len);
 			//already set cli to cli_ctx at client_init
+			//set channel_id as 0, for dynamic channel on client.
+			channel_id = 0;
 		}else{
-			get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len);
+			//TODO:for check client from saddr and netip
+			//get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, len);
 		}
 
-		// now we got one client address, update the address list
+		// now we got one remote address, update the address list
 		if(cli_ctx->cli != NULL)
-			strategy_update_remote_addr_list(cli_ctx->cli->strategy, ctx->remote_addrp, ctx->remote_addrlen);
+			strategy_update_remote_addr_list(cli_ctx->cli->strategy, channel_id, ctx->remote_addrp, ctx->remote_addrlen);
 		else{
 			//can't find client, means this address is not added to client, so drop it.
 			ctx->remote_addrlen = 0;
@@ -470,16 +465,16 @@ int vpn_run(vpn_ctx_t *ctx) {
         }
       }
 
-		
 		if(ctx->args->mode == SHADOWVPN_MODE_CLIENT){
 			//for client we just get the only cli.
 			//get_client_by_saddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
 			//already set cli to cli_ctx at client_init
 		}else{
 			get_client_by_daddr(cli_ctx, ctx->tun_buf + SHADOWVPN_ZERO_BYTES, r);
+
 		}
 		if(cli_ctx->cli != NULL){
-			if(strategy_choose_remote_addr(cli_ctx->cli->strategy, ctx->remote_addrp, &ctx->remote_addrlen)){
+			if(strategy_choose_remote_addr(cli_ctx->cli->strategy, &ctx->channel_id, ctx->remote_addrp, &ctx->remote_addrlen)){
 				struct in_addr in;
 				in.s_addr = cli_ctx->cli->output_tun_ip;
 				errf("can't get remote addr,cli ip:%s",inet_ntoa(in));
@@ -488,10 +483,11 @@ int vpn_run(vpn_ctx_t *ctx) {
 			ctx->remote_addrlen = 0;
 			//errf("%s get client fail", __func__);
 		}
+
       if (ctx->remote_addrlen) {
         crypto_encrypt_ext(ctx->udp_buf, ctx->tun_buf, r, cli_ctx->cli->key);
-				crypto_set_token(ctx->udp_buf, cli_ctx->cli->output_tun_ip);
-		r = channel_send_data(ctx->channel, ctx->udp_buf,
+		crypto_set_token(ctx->udp_buf, cli_ctx->cli->output_tun_ip);
+		r = channel_send_data(ctx->channel, ctx->channel_id, ctx->udp_buf,
            SHADOWVPN_OVERHEAD_LEN + r,
            ctx->remote_addrp, ctx->remote_addrlen);
         if (r == -1) {

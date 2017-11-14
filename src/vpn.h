@@ -47,6 +47,8 @@ typedef struct {
   struct sockaddr_storage remote_addr;
   struct sockaddr *remote_addrp;
   socklen_t remote_addrlen;
+  int channel_id;
+
   shadowvpn_args_t *args;
 } vpn_ctx_t;
 
